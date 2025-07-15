@@ -10,7 +10,6 @@
     - name: Upgrade all packages to the latest version
       ansible.builtin.apt:
         upgrade: dist
-    - name: Gather system information
     - name: Display Hostname
       debug:
         msg: "Hostname: {{ ansible_hostname }}"
