@@ -1,0 +1,42 @@
+---
+- name: Automate MariaDB Setup
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Install MariaDB Server
+      apt:
+      name: mariadb-server
+      state: present
+
+    - name: Start and Enable MariaDB Service
+      service:
+        name: mariadb
+        state: started
+        enabled: true
+
+    - name: Create a Database
+      community.mysql.mysql_db:
+      name: my_database
+      state: present
+      login_user: root
+
+    - name: Create a Database User
+      community.mysql.mysql_user:
+      name: my_user
+      password: my_password
+      priv: 'my_database.*:ALL'
+      state: present
+      login_user: root
+
+    - name: Secure Installation (Optional)
+      shell: |
+        mysql_secure_installation <<EOF
+        y
+        my_root_password
+        my_root_password
+        y
+        y
+        y
+        y
+        EOF
