@@ -1,0 +1,19 @@
+# update packages
+- name: Update and upgrade system
+  hosts: management
+  become: yes
+  tasks:
+    - name: Update apt Distributuion
+      include_role:
+        name: './templates/updates'
+
+
+  
+
+- name: Update and upgrade system
+  hosts: management
+  become: yes
+  tasks:
+    - name: Update apt Distributuion
+      include_role:
+        name: './templates/updates'

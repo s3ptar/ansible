@@ -1,3 +1,7 @@
 #SPDX-License-Identifier: MIT-0
 ---
 # tasks file for checkmk
+
+- name: Update and upgrade apt packages
+  become_user: '{{ become_user_for_checkmk }}'
+  tasks:
