@@ -1,3 +1,4 @@
+# https://github.com/Checkmk/ansible-collection-checkmk.general
 # update packages
 - name: Update and upgrade system
   hosts: management
@@ -5,15 +6,5 @@
   tasks:
     - name: Update apt Distributuion
       include_role:
-        name: './templates/updates'
-
-
-  
-
-- name: Update and upgrade system
-  hosts: management
-  become: yes
-  tasks:
-    - name: Update apt Distributuion
-      include_role:
-        name: './templates/updates'
+        name: './templates/ansible-collection-checkmk.general/server/'
+      tags: [install-package, create-sites, start-sites, ]
