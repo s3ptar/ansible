@@ -1,0 +1,7 @@
+# update packages
+- name: Update and upgrade system
+  hosts: management
+  become: yes
+  roles:
+    - role: './templates/updates'
+

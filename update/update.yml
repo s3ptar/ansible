@@ -1,7 +1,6 @@
-# update packages
-- name: Update and upgrade system
-  hosts: management
-  become: yes
-  roles:
-    - role: './templates/updates'
-
+---
+- name: Test connectivity to managed nodes
+  hosts: all
+  tasks:
+    - name: Ping all nodes
+      ansible.builtin.ping:
