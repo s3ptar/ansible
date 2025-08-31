@@ -18,7 +18,20 @@
 - name: Check network interface information
   ansible.builtin.debug:
     msg: "IP Address of eth0 is {{ ansible_facts['eth0']['ipv4']['address'] }}"
-- name: Upgrade all packages to the latest version
+- name: Upgrade cache
+  become: yes
   ansible.builtin.apt:
     update_cache: yes
+- name: Upgrade all packages to the latest version
+  become: yes
+  ansible.builtin.apt:
     upgrade: dist
+- name: Remove unnecessary packages
+  become: yes
+  ansible.builtin.apt:
+    autoremove: yes
+- name: Clean up the local repository of retrieved package files
+  become: yes
+  ansible.builtin.apt:
+    autoclean: yes
+

@@ -1,0 +1,23 @@
+---
+
+- name: Update and Upgrade Ubuntu System
+  # hosts: all
+  become: yes
+  tasks:
+   - name: Update apt cache
+     apt:
+       update_cache: yes
+
+   - name: Upgrade all packages to the latest version
+     apt:
+       upgrade: dist
+
+   - name: Remove unnecessary packages
+     apt:
+       autoremove: yes
+
+   - name: Clean up the local repository of retrieved package files
+     apt:
+       autoclean: yes
+
+...

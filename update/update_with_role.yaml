@@ -1,0 +1,7 @@
+---
+- name: Start OS updates
+  hosts: all
+  roles:
+    - updates
+
+...

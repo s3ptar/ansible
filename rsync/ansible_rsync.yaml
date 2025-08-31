@@ -1,0 +1,12 @@
+---
+- name: Run rsync with custom options
+  hosts: rsync
+  become: yes
+  become_user: root
+  become_method: sudo
+  tasks:
+    - name: Execute rsync command
+      ansible.builtin.shell: |
+        /usr/bin/rsync --progress --delete -azvh rsync://ftp.gwdg.de/pub/linux/fedora/epel/8/Everything/x86_64/ /home/homedoc/update/epel/Everything/x86_64/
+
+...
