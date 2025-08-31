@@ -1,0 +1,7 @@
+---
+# update packages
+- name: System Check and Configuration
+  tasks:
+    - name: Ping all nodes
+      ansible.builtin.ping
+...

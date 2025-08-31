@@ -1,0 +1,37 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for updates
+# update packages
+# update packages
+- name: Display Hostname
+  debug:
+    msg: "Hostname: {{ ansible_hostname }}"
+- name: Display Operating System
+  debug:
+    msg: "Operating System: {{ ansible_distribution }} Verion: {{ ansible_distribution_version }}"
+- name: Check CPU and total memory
+  debug:
+    msg: "CPU Architecture: {{ ansible_architecture }}, Total Memory: {{ ansible_memtotal_mb }} MB"
+- name: Check disk space
+  debug:
+    msg: "Disk Space on /dev/sda: Total={{ (ansible_mounts[0].size_total / 1024 / 1024 / 1024) | round(2) }} GB Available={{ (ansible_mounts[0].size_available / 1024 / 1024 / 1024) }} GB"
+- name: Check network interface information
+  ansible.builtin.debug:
+    msg: "IP Address of eth0 is {{ ansible_facts['eth0']['ipv4']['address'] }}"
+- name: Upgrade cache
+  become: yes
+  ansible.builtin.apt:
+    update_cache: yes
+- name: Upgrade all packages to the latest version
+  become: yes
+  ansible.builtin.apt:
+    upgrade: dist
+- name: Remove unnecessary packages
+  become: yes
+  ansible.builtin.apt:
+    autoremove: yes
+- name: Clean up the local repository of retrieved package files
+  become: yes
+  ansible.builtin.apt:
+    autoclean: yes
+
