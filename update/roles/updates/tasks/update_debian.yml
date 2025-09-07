@@ -19,19 +19,19 @@
   ansible.builtin.debug:
     msg: "IP Address of eth0 is {{ ansible_facts['eth0']['ipv4']['address'] }}"
 - name: Upgrade cache
-  become: yes
+  become: true
   ansible.builtin.apt:
     update_cache: yes
 - name: Upgrade all packages to the latest version
-  become: yes
+  become: true
   ansible.builtin.apt:
     upgrade: dist
 - name: Remove unnecessary packages
-  become: yes
+  become: true
   ansible.builtin.apt:
     autoremove: yes
 - name: Clean up the local repository of retrieved package files
-  become: yes
+  become: true
   ansible.builtin.apt:
     autoclean: yes
 
