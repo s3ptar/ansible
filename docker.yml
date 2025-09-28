@@ -1,0 +1,186 @@
+---
+# https://www.digitalocean.com/community/tutorials/how-to-install-nginx-on-ubuntu-20-04
+# https://docs.ansible.com/ansible/latest/collections/community/docker/docker_compose_v2_module.html#ansible-collections-community-docker-docker-compose-v2-module
+
+- name: Install and Configure Docker
+  hosts: testsystem
+  vars_files:
+    - /home/homedoc/ansible/vault/home-vault.yml
+  become: true
+  #become_method: su
+  #become_user: "{{ yourusername }}"
+  vars:
+   # ansible_become_user: "{{ yourusername }}"
+    become_user: "{{ yourusername }}"
+    ansible_become_password: "{{ yourpassword }}"
+    project_path: /var/docker/compose        # Zielverzeichnis auf dem Server
+    compose_file: /home/homedoc/ansible/files/docker_compose_mgmt.yml
+    tftp_dir: /var/pxe/tftpboot
+    http_dir: /var/pxe/http
+    ubuntu_iso_url: http://releases.ubuntu.com/24.04/ubuntu-24.04.3-live-server-amd64.iso
+    netboot_url: "https://releases.ubuntu.com/24.04/ubuntu-24.04.3-netboot-amd64.tar.gz"
+  roles:
+    - /home/homedoc/ansible/roles/update
+
+  tasks:
+    - name: prüfen ob Docker installiert ist
+      ansible.builtin.command: docker --version
+      register: docker_check
+      ignore_errors: yes
+    
+    - name: Show results
+      ansible.builtin.debug:
+        var: docker_check
+    
+    # ---------------------------- user and groups ----------------------------
+
+    - block:
+      - name: Ensure the group exists
+        ansible.builtin.group:
+          name: grp_docker
+          state: present
+
+      - name: Add User to group
+        ansible.builtin.user:
+          name: homedoc
+          groups: grp_docker
+          append: yes
+      when: docker_check.failed
+
+    # ---------------------------- install docker ----------------------------
+
+    - block:
+      - name: Install required system packages
+        apt:
+          pkg: 
+            - curl
+            - ca-certificates
+          state: latest
+          update_cache: yes
+      - name: Install keyrings
+        ansible.builtin.shell: sudo install -m 0755 -d /etc/apt/keyrings
+      - name: Install gpg
+        ansible.builtin.shell: sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+      - name: chmod gpg
+        ansible.builtin.shell: sudo chmod a+r /etc/apt/keyrings/docker.asc
+      - name: Get Operating System
+        ansible.builtin.shell: dpkg --print-architecture
+        register: architecture_output
+      - name: Display Operating System
+        debug:
+          msg: "deb [arch={{ architecture_output.stdout }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_facts['lsb']['codename'] }} stable"
+      - name: Add Docker Repository
+        apt_repository:
+          repo: "deb [arch={{ architecture_output.stdout }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_facts['lsb']['codename'] }} stable"
+          state: present
+      - name: Update apt and install docker componentes
+        apt:
+          pkg:
+            - docker-ce 
+            - docker-ce-cli 
+            - containerd.io 
+            - docker-buildx-plugin 
+            - docker-compose-plugin
+          state: latest
+          update_cache: true
+      
+      - name: Erstelle ein Verzeichnis rekursiv
+        ansible.builtin.file:
+          path: "{{ project_path }}"
+          state: directory
+          group: grp_docker
+          mode: '0774'
+          recurse: yes
+      when: docker_check.failed
+
+    # ---------------------------- setup pxe  ----------------------------
+    - name: Erstelle Verzeichnisse für TFTP & HTTP
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      loop:
+        - "{{ tftp_dir }}"
+        - "{{ http_dir }}"
+        - "{{ tftp_dir }}/pxelinux.cfg"
+
+    - name: Netboot-Tarball herunterladen
+      get_url:
+        url: "{{ netboot_url }}"
+        dest: "{{ tftp_dir }}/netboot.tar.gz"
+        mode: '0644'
+
+    - name: Netboot Dateien entpacken
+      unarchive:
+        src: "{{ tftp_dir }}/netboot.tar.gz"
+        dest: "{{ tftp_dir }}"
+        remote_src: yes
+
+    - name: Ubuntu Server ISO herunterladen
+      get_url:
+        url: "{{ ubuntu_iso_url }}"
+        dest: "{{ http_dir }}/ubuntu-24.04-live-server-amd64.iso"
+        mode: '0644'
+    
+    - name: Kopiere UEFI Bootloader-Dateien (falls nicht automatisch enthalten)
+      # In netboot-Verzeichnis sind oft schon bootx64.efi, grubx64.efi vorhanden. Wir sichern sie
+      ansible.builtin.copy:
+        src: "{{ tftp_dir }}/amd64/grubx64.efi"
+        dest: "{{ tftp_dir }}/grubx64.efi"
+        remote_src: yes
+
+    - name: PXELINUX-Konfiguration für BIOS Clients
+      copy:
+        dest: "{{ tftp_dir }}/pxelinux.cfg/default"
+        content: |
+          DEFAULT install
+          LABEL install
+            KERNEL linux
+            APPEND initrd=initrd \
+              auto=true priority=critical \
+              url=http://{{ ansible_default_ipv4.address }}:8080/ubuntu-24.04-live-server-amd64.iso
+
+    - name: GRUB-Konfiguration für UEFI Clients
+      copy:
+        dest: "{{ tftp_dir }}/grub.cfg"
+        content: |
+          set timeout=5
+          menuentry "Install Ubuntu 24.04 (UEFI)" {
+            linux /linux auto=true priority=critical \
+              url=http://{{ ansible_default_ipv4.address }}:8080/ubuntu-24.04-live-server-amd64.iso
+            initrd /initrd
+          }
+
+
+    - name: Copy docker-compose.yml
+      copy:
+        src: "/home/homedoc/ansible/files/docker_compose_mgmt.yml"
+        dest: "{{ project_path }}/docker-compose.yaml"
+        owner: root
+        group: root
+        mode: '0644'
+
+    
+    - name: Tear down existing services
+      community.docker.docker_compose_v2:
+        project_src: "{{ project_path }}"
+        state: absent
+
+    - name: Pull latest images
+      community.docker.docker_compose_v2:
+        project_src: "{{ project_path }}"
+        pull: always
+
+    - name: Restart containers
+      community.docker.docker_compose_v2:
+        project_src: "{{ project_path }}"
+        state: restarted
+      register: output
+
+    - name: Show results
+      ansible.builtin.debug:
+        var: output
+
+...
